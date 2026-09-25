@@ -146,7 +146,7 @@ def jogo():
     x = LARGURA / 2
     y = ALTURA / 2
 
-    x, y = mover_cobra(x, y, direcao)
+    direcao = DIREITA
 
     cobra_lista = []
     comprimento = 1
@@ -240,8 +240,7 @@ def jogo():
             game_over = True
 
         # Atualiza posição
-        x += x_mudanca
-        y += y_mudanca
+        x, y = mover_cobra(x, y, direcao)
 
         tela.fill(PRETO)
 

@@ -62,11 +62,11 @@ def menu():
     while True:
         tela.fill(PRETO)
 
-        escrever("JOGO DA COBRINHA", VERDE, 45, 120, 60)
-
-        escrever("1 - Iniciar Jogo", BRANCO, 30, 180, 170)
-        escrever("2 - Pontuações", BRANCO, 30, 180, 220)
-        escrever("3 - Sair", BRANCO, 30, 180, 270)
+        escrever("JOGO DA COBRINHA", VERDE, 45, 120, 50)
+        escrever("1 - Jogar", BRANCO, 30, 180, 150)
+        escrever("2 - Pontuações", BRANCO, 30, 180, 195)
+        escrever("3 - Testar IA", BRANCO, 30, 180, 240)
+        escrever("4 - Sair", BRANCO, 30, 180, 285)
 
         pygame.display.update()
 
@@ -79,12 +79,15 @@ def menu():
             if evento.type == pygame.KEYDOWN:
 
                 if evento.key == pygame.K_1:
-                    jogo()
+                    jogo(modo_ia=False)
 
                 elif evento.key == pygame.K_2:
                     tela_pontuacoes()
 
                 elif evento.key == pygame.K_3:
+                    jogo(modo_ia=True)
+
+                elif evento.key == pygame.K_4:
                     pygame.quit()
                     quit()
 
@@ -211,8 +214,50 @@ def obter_estado(x, y, direcao, cobra_lista, comida_x, comida_y):
 
     return estado
 
+def escolher_acao_aleatoria(estado):
+    # Lê os três primeiros valores do estado:
+    # perigo à frente, à direita e à esquerda.
+    perigo_frente = estado[0]
+    perigo_direita = estado[1]
+    perigo_esquerda = estado[2]
+
+    # Guarda as ações que não apresentam perigo imediato.
+    acoes_seguras = []
+
+    if not perigo_frente:
+        acoes_seguras.append(0)
+
+    if not perigo_direita:
+        acoes_seguras.append(1)
+
+    if not perigo_esquerda:
+        acoes_seguras.append(2)
+
+    # Se houver ações seguras, escolhe uma delas.
+    if acoes_seguras:
+        return random.choice(acoes_seguras)
+
+    # Se todas forem perigosas, escolhe uma ação mesmo assim.
+    return random.choice([0, 1, 2])
+
+
+def aplicar_acao(direcao, acao):
+    # Ação 0: continuar em frente.
+    if acao == 0:
+        return direcao
+
+    # Ação 1: virar à direita.
+    elif acao == 1:
+        return (direcao + 1) % 4
+
+    # Ação 2: virar à esquerda.
+    elif acao == 2:
+        return (direcao - 1) % 4
+
+    return direcao
+
 # JOGO
-def jogo():
+def jogo(modo_ia=False):
 
     fim_jogo = False
     game_over = False
@@ -224,7 +269,6 @@ def jogo():
 
     cobra_lista = []
     comprimento = 1
-    estado_exibido = False
 
     comida_x = round(
         random.randrange(0, LARGURA - TAMANHO_BLOCO) / 10.0
@@ -278,7 +322,7 @@ def jogo():
                 if evento.type == pygame.KEYDOWN:
 
                     if evento.key == pygame.K_c:
-                        jogo()
+                        jogo(modo_ia=modo_ia)
 
                     elif evento.key == pygame.K_m:
                         return
@@ -293,7 +337,7 @@ def jogo():
             if evento.type == pygame.QUIT:
                 fim_jogo = True
 
-            elif evento.type == pygame.KEYDOWN:
+            elif evento.type == pygame.KEYDOWN and not modo_ia:
 
                 if evento.key == pygame.K_LEFT:
                     direcao = ESQUERDA
@@ -306,6 +350,20 @@ def jogo():
 
                 elif evento.key == pygame.K_DOWN:
                     direcao = BAIXO
+
+        # Encerra o loop se a janela for fechada.
+        if fim_jogo:
+            break
+
+        # Se estiver no modo IA, ela escolhe a direção.
+        if modo_ia:
+            estado = obter_estado(
+            x, y, direcao, cobra_lista, comida_x, comida_y
+        )
+
+        acao = escolher_acao_aleatoria(estado)
+
+        direcao = aplicar_acao(direcao, acao)
 
         # Atualiza posição
         x, y = mover_cobra(x, y, direcao)
@@ -342,23 +400,6 @@ def jogo():
                 pontuacoes.append(comprimento - 1)
 
                 game_over = True
-
-        # TESTE TEMPORÁRIO DO ESTADO DA IA
-        if not estado_exibido:
-
-            estado = obter_estado(
-                x,
-                y,
-                direcao,
-                cobra_lista,
-                comida_x,
-                comida_y
-            )
-
-            print("Estado da IA:", estado)
-            print("Quantidade de características:", len(estado))
-
-            estado_exibido = True
 
         desenhar_cobra(TAMANHO_BLOCO, cobra_lista)
 

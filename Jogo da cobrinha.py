@@ -137,6 +137,80 @@ def mover_cobra(x, y, direcao):
 
     return x,y
 
+# Verifica se uma posição é perigosa
+def existe_perigo(x, y, direcao, cobra_lista, comida_x, comida_y):
+
+    # Calcula a próxima posição da cobra
+    proximo_x, proximo_y = mover_cobra(x, y, direcao)
+
+    # Verifica se a cobra vai bater na parede
+    if (
+        proximo_x < 0
+        or proximo_x >= LARGURA
+        or proximo_y < 0
+        or proximo_y >= ALTURA
+    ):
+        return True
+
+    # Verifica se a cobra vai bater no próprio corpo
+    proxima_posicao = [proximo_x, proximo_y]
+
+    corpo = cobra_lista[:-1]
+
+    # Se não comer, a cauda normalmente vai sair da posição atual
+    vai_comer = (
+        proximo_x == comida_x
+        and proximo_y == comida_y
+    )
+
+    if not vai_comer and corpo:
+        corpo = corpo[1:]
+
+    if proxima_posicao in corpo:
+        return True
+
+    # Se não encontrar perigo
+    return False
+
+# Obtém o estado atual para a IA
+def obter_estado(x, y, direcao, cobra_lista, comida_x, comida_y):
+
+    # Descobre as direções relativas à cobra
+    direcao_direita = (direcao + 1) % 4
+    direcao_esquerda = (direcao - 1) % 4
+
+    # Detecta os perigos
+    perigo_frente = existe_perigo(
+        x, y, direcao, cobra_lista, comida_x, comida_y
+    )
+
+    perigo_direita = existe_perigo(
+        x, y, direcao_direita, cobra_lista, comida_x, comida_y
+    )
+
+    perigo_esquerda = existe_perigo(
+        x, y, direcao_esquerda, cobra_lista, comida_x, comida_y
+    )
+
+    # Retorna as informações em uma tupla
+    estado = (
+        perigo_frente,
+        perigo_direita,
+        perigo_esquerda,
+
+        direcao == ESQUERDA,
+        direcao == DIREITA,
+        direcao == CIMA,
+        direcao == BAIXO,
+
+        comida_x < x,
+        comida_x > x,
+        comida_y < y,
+        comida_y > y
+    )
+
+    return estado
+
 # JOGO
 def jogo():
 
@@ -150,6 +224,7 @@ def jogo():
 
     cobra_lista = []
     comprimento = 1
+    estado_exibido = False
 
     comida_x = round(
         random.randrange(0, LARGURA - TAMANHO_BLOCO) / 10.0
@@ -232,15 +307,16 @@ def jogo():
                 elif evento.key == pygame.K_DOWN:
                     direcao = BAIXO
 
+        # Atualiza posição
+        x, y = mover_cobra(x, y, direcao)
+
         # Colisão com parede
         if x >= LARGURA or x < 0 or y >= ALTURA or y < 0:
-
+            
             pontuacoes.append(comprimento - 1)
 
             game_over = True
-
-        # Atualiza posição
-        x, y = mover_cobra(x, y, direcao)
+            continue
 
         tela.fill(PRETO)
 
@@ -266,6 +342,23 @@ def jogo():
                 pontuacoes.append(comprimento - 1)
 
                 game_over = True
+
+        # TESTE TEMPORÁRIO DO ESTADO DA IA
+        if not estado_exibido:
+
+            estado = obter_estado(
+                x,
+                y,
+                direcao,
+                cobra_lista,
+                comida_x,
+                comida_y
+            )
+
+            print("Estado da IA:", estado)
+            print("Quantidade de características:", len(estado))
+
+            estado_exibido = True
 
         desenhar_cobra(TAMANHO_BLOCO, cobra_lista)
 

@@ -23,6 +23,7 @@ clock = pygame.time.Clock()
 # Configurações
 TAMANHO_BLOCO = 10
 VELOCIDADE = 15
+VELOCIDADE_TREINAMENTO = 240
 
 # Direções
 CIMA = 0
@@ -63,10 +64,11 @@ def menu():
         tela.fill(PRETO)
 
         escrever("JOGO DA COBRINHA", VERDE, 45, 120, 50)
-        escrever("1 - Jogar", BRANCO, 30, 180, 150)
-        escrever("2 - Pontuações", BRANCO, 30, 180, 195)
-        escrever("3 - Testar IA", BRANCO, 30, 180, 240)
-        escrever("4 - Sair", BRANCO, 30, 180, 285)
+        escrever("1 - Jogar", BRANCO, 30, 120, 150)
+        escrever("2 - Pontuações", BRANCO, 30, 120, 195)
+        escrever("3 - Testar IA", BRANCO, 30, 120, 240)
+        escrever("4 - Treinamento acelerado", BRANCO, 25, 120, 285)
+        escrever("5 - Sair", BRANCO, 30, 120, 330)
 
         pygame.display.update()
 
@@ -88,6 +90,9 @@ def menu():
                     jogo(modo_ia=True)
 
                 elif evento.key == pygame.K_4:
+                    jogo(modo_ia=True, treinamento_rapido=True)
+
+                elif evento.key == pygame.K_5:
                     pygame.quit()
                     quit()
 
@@ -338,7 +343,7 @@ estatisticas_ia = {
 }
 
 
-def registrar_resultado_ia(pontuacao):
+def registrar_resultado_ia(pontuacao, treinamento_rapido=False):
     estatisticas_ia["episodios"] += 1
     estatisticas_ia["pontuacoes"].append(pontuacao)
 
@@ -352,13 +357,57 @@ def registrar_resultado_ia(pontuacao):
     print(f"Média das últimas {len(ultimas)} partidas: {media:.2f}")
     print(f"Estados conhecidos: {len(agente.q_tabela)}")
     print(f"Atualizações de Q: {agente.total_atualizacoes}")
-    print(f"Epsilon: {agente.epsilon:.3f}")
+    print(f"Epsilon: {agente.epsilon:.3f}")    
+
+    # Atualiza a tela com o progresso do treinamento acelerado.
+    if treinamento_rapido:
+
+        tela.fill(PRETO)
+
+        escrever("TREINAMENTO ACELERADO", VERDE, 30, 100, 60)
+
+        escrever(
+            f"Episodios: {estatisticas_ia['episodios']}",
+            BRANCO, 25, 100, 130
+        )
+
+        escrever(
+            f"Pontuacao: {pontuacao}",
+            BRANCO, 25, 100, 170
+        )
+
+        escrever(
+            f"Media das ultimas partidas: {media:.2f}",
+            BRANCO, 25, 100, 210
+        )
+
+        escrever(
+            f"Estados conhecidos: {len(agente.q_tabela)}",
+            BRANCO, 25, 100, 250
+        )
+
+        escrever(
+            f"Epsilon: {agente.epsilon:.3f}",
+            BRANCO, 25, 100, 290
+        )
+
+        escrever(
+            "ESC - Encerrar treinamento",
+            VERMELHO, 20, 100, 350
+        )
+
+        pygame.display.update()
 
 # JOGO
-def jogo(modo_ia=False):
+def jogo(modo_ia=False, treinamento_rapido=False):
+
+    # O treinamento acelerado sempre utiliza a IA.
+    if treinamento_rapido:
+        modo_ia = True
 
     fim_jogo = False
     game_over = False
+    treinamento_automatico = False
 
     x = LARGURA / 2
     y = ALTURA / 2
@@ -370,15 +419,37 @@ def jogo(modo_ia=False):
 
     comida_x, comida_y = gerar_comida(cobra_lista)
 
+    # Exibe uma mensagem quando o treinamento acelerado começa.
+    if treinamento_rapido:
+        tela.fill(PRETO)
+
+        escrever(
+            "TREINAMENTO ACELERADO",
+            VERDE,
+            30,
+            100,
+            145
+        )
+
+        escrever(
+            "ESC - Encerrar e voltar ao menu",
+            BRANCO,
+            20,
+            105,
+            205
+        )
+
+        pygame.display.update()
+
     while not fim_jogo:
 
-        # GAME OVER
 
         # GAME OVER
         while game_over:
 
-            # No modo IA, inicia automaticamente um novo episódio.
-            if modo_ia:
+            # Reinicia automaticamente nos modos de treinamento.
+            if modo_ia and (treinamento_rapido or treinamento_automatico):
+
                 x = LARGURA / 2
                 y = ALTURA / 2
 
@@ -392,33 +463,93 @@ def jogo(modo_ia=False):
                 game_over = False
                 break
 
+            # Menu de resultados do teste da IA.
+            if modo_ia:
+
+                tela.fill(PRETO)
+
+                escrever("TESTE DA INTELIGENCIA ARTIFICIAL", VERDE, 30, 45, 40)
+
+                escrever(
+                    f"Episodios: {estatisticas_ia['episodios']}",
+                    BRANCO, 25, 100, 110
+                )
+
+                escrever(
+                    f"Pontuacao: {comprimento - 1}",
+                    BRANCO, 25, 100, 150
+                )
+
+                ultimas = estatisticas_ia["pontuacoes"][-20:]
+                media = sum(ultimas) / len(ultimas) if ultimas else 0
+
+                escrever(
+                    f"Media das ultimas partidas: {media:.2f}",
+                    BRANCO, 22, 100, 190
+                )
+
+                escrever(
+                    f"Estados conhecidos: {len(agente.q_tabela)}",
+                    BRANCO, 22, 100, 230
+                )
+
+                escrever(
+                    f"Epsilon: {agente.epsilon:.3f}",
+                    BRANCO, 22, 100, 270
+                )
+
+                escrever(
+                    "A - Iniciar treinamento automatico",
+                    VERDE, 22, 65, 320
+                )
+
+                escrever(
+                    "ESC - Voltar ao menu principal",
+                    VERMELHO, 22, 65, 355
+                )
+
+                pygame.display.update()
+
+                clock.tick(30)
+
+                for evento in pygame.event.get():
+
+                    if evento.type == pygame.QUIT:
+                        pygame.quit()
+                        quit()
+
+                    if evento.type == pygame.KEYDOWN:
+
+                        if evento.key == pygame.K_a:
+
+                            treinamento_automatico = True
+
+                            x = LARGURA / 2
+                            y = ALTURA / 2
+
+                            direcao = DIREITA
+
+                            cobra_lista = [[x, y]]
+                            comprimento = 1
+
+                            comida_x, comida_y = gerar_comida(cobra_lista)
+
+                            game_over = False
+                            break
+
+                        elif evento.key == pygame.K_ESCAPE:
+                            return
+
+                continue
+
+            # Tela de Game Over do modo manual.
             tela.fill(PRETO)
 
-            escrever("VOCÊ PERDEU!", VERMELHO, 45, 150, 100)
+            escrever("VOCE PERDEU!", VERMELHO, 45, 150, 100)
 
-            escrever(
-                "C - Jogar Novamente",
-                BRANCO,
-                30,
-                150,
-                200
-            )
-
-            escrever(
-                "M - Menu Principal",
-                BRANCO, 
-                30,
-                150,
-                240
-            )
-
-            escrever(
-                "Q - Sair",
-                BRANCO,
-                30,
-                150,
-                280
-            )
+            escrever("C - Jogar Novamente", BRANCO, 30, 150, 200)
+            escrever("M - Menu Principal", BRANCO, 30, 150, 240)
+            escrever("Q - Sair", BRANCO, 30, 150, 280)
 
             pygame.display.update()
 
@@ -452,25 +583,36 @@ def jogo(modo_ia=False):
                         pygame.quit()
                         quit()
 
+
         # EVENTOS
         for evento in pygame.event.get():
 
             if evento.type == pygame.QUIT:
                 fim_jogo = True
 
-            elif evento.type == pygame.KEYDOWN and not modo_ia:
+            elif evento.type == pygame.KEYDOWN:
 
-                if evento.key == pygame.K_LEFT:
-                    direcao = ESQUERDA
+                # ESC encerra o treinamento acelerado.
+                if (
+                    (treinamento_rapido or treinamento_automatico)
+                    and evento.key == pygame.K_ESCAPE
+                ):
+                    return
 
-                elif evento.key == pygame.K_RIGHT:
-                    direcao = DIREITA
+                # Controles manuais continuam funcionando normalmente.
+                if not modo_ia:
 
-                elif evento.key == pygame.K_UP:
-                    direcao = CIMA
+                    if evento.key == pygame.K_LEFT:
+                        direcao = ESQUERDA
 
-                elif evento.key == pygame.K_DOWN:
-                    direcao = BAIXO
+                    elif evento.key == pygame.K_RIGHT:
+                        direcao = DIREITA
+
+                    elif evento.key == pygame.K_UP:
+                        direcao = CIMA
+
+                    elif evento.key == pygame.K_DOWN:
+                        direcao = BAIXO
 
         # Encerra o loop se a janela for fechada.
         if fim_jogo:
@@ -500,7 +642,7 @@ def jogo(modo_ia=False):
                 )
 
                 agente.encerrar_episodio()
-                registrar_resultado_ia(comprimento - 1)
+                registrar_resultado_ia(comprimento - 1, treinamento_rapido)
 
             game_over = True
             continue
@@ -527,7 +669,7 @@ def jogo(modo_ia=False):
                 )
 
                 agente.encerrar_episodio()
-                registrar_resultado_ia(comprimento - 1)
+                registrar_resultado_ia(comprimento - 1, treinamento_rapido)
 
             game_over = True
             continue
@@ -559,22 +701,39 @@ def jogo(modo_ia=False):
                 False
             )
 
-        # Desenha o cenário
-        tela.fill(PRETO)
 
-        pygame.draw.rect(
-            tela,
-            VERMELHO,
-            [comida_x, comida_y, TAMANHO_BLOCO, TAMANHO_BLOCO]
+        # Desenha o cenário somente no modo normal.
+        if not treinamento_rapido:
+
+            tela.fill(PRETO)
+
+            pygame.draw.rect(
+                tela,
+                VERMELHO,
+                [comida_x, comida_y, TAMANHO_BLOCO, TAMANHO_BLOCO]
+            )
+
+            desenhar_cobra(TAMANHO_BLOCO, cobra_lista)
+
+            mostrar_pontuacao(comprimento - 1)
+
+            if treinamento_automatico:
+                escrever(
+                "AUTOMATICO - ESC PARA SAIR",
+                VERDE,
+                17,
+                180,
+                40
+            )
+
+            pygame.display.update()
+
+        # Define a velocidade de execução.
+        clock.tick(
+            VELOCIDADE_TREINAMENTO if treinamento_rapido else VELOCIDADE
         )
 
-        desenhar_cobra(TAMANHO_BLOCO, cobra_lista)
-
-        mostrar_pontuacao(comprimento - 1)
-
-        pygame.display.update()
-
-        clock.tick(VELOCIDADE)
+    # Encerra o programa quando a janela é fechada.
     pygame.quit()
     quit()
 

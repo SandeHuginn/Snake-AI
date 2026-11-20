@@ -140,6 +140,21 @@ def mover_cobra(x, y, direcao):
 
     return x,y
 
+def gerar_comida(cobra_lista):
+
+    while True:
+
+        comida_x = random.randrange(
+            0, LARGURA, TAMANHO_BLOCO
+        )
+
+        comida_y = random.randrange(
+            0, ALTURA, TAMANHO_BLOCO
+        )
+
+        if [comida_x, comida_y] not in cobra_lista:
+            return comida_x, comida_y
+
 # Verifica se uma posição é perigosa
 def existe_perigo(x, y, direcao, cobra_lista, comida_x, comida_y):
 
@@ -214,33 +229,6 @@ def obter_estado(x, y, direcao, cobra_lista, comida_x, comida_y):
 
     return estado
 
-def escolher_acao_aleatoria(estado):
-    # Lê os três primeiros valores do estado:
-    # perigo à frente, à direita e à esquerda.
-    perigo_frente = estado[0]
-    perigo_direita = estado[1]
-    perigo_esquerda = estado[2]
-
-    # Guarda as ações que não apresentam perigo imediato.
-    acoes_seguras = []
-
-    if not perigo_frente:
-        acoes_seguras.append(0)
-
-    if not perigo_direita:
-        acoes_seguras.append(1)
-
-    if not perigo_esquerda:
-        acoes_seguras.append(2)
-
-    # Se houver ações seguras, escolhe uma delas.
-    if acoes_seguras:
-        return random.choice(acoes_seguras)
-
-    # Se todas forem perigosas, escolhe uma ação mesmo assim.
-    return random.choice([0, 1, 2])
-
-
 def aplicar_acao(direcao, acao):
     # Ação 0: continuar em frente.
     if acao == 0:
@@ -256,6 +244,116 @@ def aplicar_acao(direcao, acao):
 
     return direcao
 
+# Agente de aprendizado por reforço: Q-Learning
+class AgenteQLearning:
+
+    def __init__(self):
+
+        # Tabela que armazenará o conhecimento da IA.
+        self.q_tabela = {}
+
+        self.total_atualizacoes = 0
+
+        # Taxa de aprendizado.
+        self.taxa_aprendizado = 0.1
+
+        # Importância das recompensas futuras.
+        self.fator_desconto = 0.9
+
+        # Probabilidade inicial de explorar ações aleatórias.
+        self.epsilon = 1.0
+
+        # Limite mínimo de exploração.
+        self.epsilon_minimo = 0.05
+
+        # Velocidade de redução da exploração.
+        self.decaimento_epsilon = 0.995
+
+    # Obtém os valores das três ações para determinado estado.
+    def obter_valores(self, estado):
+
+        if estado not in self.q_tabela:
+            self.q_tabela[estado] = [0.0, 0.0, 0.0]
+
+        return self.q_tabela[estado]
+
+    # Escolhe uma ação usando exploração ou conhecimento.
+    def escolher_acao(self, estado):
+
+        valores = self.obter_valores(estado)
+
+        # Exploração: experimenta uma ação aleatória.
+        if random.random() < self.epsilon:
+            return random.randrange(3)
+
+        # Aproveitamento: escolhe a ação com maior valor.
+        maior_valor = max(valores)
+
+        melhores_acoes = [
+            i for i, valor in enumerate(valores)
+            if valor == maior_valor
+        ]
+
+        return random.choice(melhores_acoes)
+
+    # Atualiza o conhecimento com base na recompensa.
+    def aprender(self, estado, acao, recompensa, proximo_estado, terminou):
+
+        valores = self.obter_valores(estado)
+
+        valor_atual = valores[acao]
+
+        if terminou:
+            melhor_valor_futuro = 0.0
+        else:
+            melhor_valor_futuro = max(
+                self.obter_valores(proximo_estado)
+            )
+
+        novo_valor = recompensa + (
+            self.fator_desconto * melhor_valor_futuro
+        )
+
+        valores[acao] = valor_atual + (
+            self.taxa_aprendizado * (novo_valor - valor_atual)
+        )
+
+        self.total_atualizacoes += 1
+
+    # Reduz a exploração depois de cada partida.
+    def encerrar_episodio(self):
+
+        self.epsilon = max(
+            self.epsilon_minimo,
+            self.epsilon * self.decaimento_epsilon
+        )
+
+
+# Cria o agente que será utilizado durante o jogo.
+agente = AgenteQLearning()
+
+estatisticas_ia = {
+    "episodios": 0,
+    "pontuacoes": []
+}
+
+
+def registrar_resultado_ia(pontuacao):
+    estatisticas_ia["episodios"] += 1
+    estatisticas_ia["pontuacoes"].append(pontuacao)
+
+    # Calcula a média das últimas 20 partidas.
+    ultimas = estatisticas_ia["pontuacoes"][-20:]
+    media = sum(ultimas) / len(ultimas)
+
+    print("\n--- DESEMPENHO DA IA ---")
+    print(f"Episódio: {estatisticas_ia['episodios']}")
+    print(f"Pontuação: {pontuacao}")
+    print(f"Média das últimas {len(ultimas)} partidas: {media:.2f}")
+    print(f"Estados conhecidos: {len(agente.q_tabela)}")
+    print(f"Atualizações de Q: {agente.total_atualizacoes}")
+    print(f"Epsilon: {agente.epsilon:.3f}")
+
 # JOGO
 def jogo(modo_ia=False):
 
@@ -267,21 +365,32 @@ def jogo(modo_ia=False):
 
     direcao = DIREITA
 
-    cobra_lista = []
+    cobra_lista = [[x, y]]
     comprimento = 1
 
-    comida_x = round(
-        random.randrange(0, LARGURA - TAMANHO_BLOCO) / 10.0
-    ) * 10.0
-
-    comida_y = round(
-        random.randrange(0, ALTURA - TAMANHO_BLOCO) / 10.0
-    ) * 10.0
+    comida_x, comida_y = gerar_comida(cobra_lista)
 
     while not fim_jogo:
 
         # GAME OVER
+
+        # GAME OVER
         while game_over:
+
+            # No modo IA, inicia automaticamente um novo episódio.
+            if modo_ia:
+                x = LARGURA / 2
+                y = ALTURA / 2
+
+                direcao = DIREITA
+
+                cobra_lista = [[x, y]]
+                comprimento = 1
+
+                comida_x, comida_y = gerar_comida(cobra_lista)
+
+                game_over = False
+                break
 
             tela.fill(PRETO)
 
@@ -297,7 +406,7 @@ def jogo(modo_ia=False):
 
             escrever(
                 "M - Menu Principal",
-                BRANCO,
+                BRANCO, 
                 30,
                 150,
                 240
@@ -322,7 +431,19 @@ def jogo(modo_ia=False):
                 if evento.type == pygame.KEYDOWN:
 
                     if evento.key == pygame.K_c:
-                        jogo(modo_ia=modo_ia)
+
+                        x = LARGURA / 2
+                        y = ALTURA / 2
+
+                        direcao = DIREITA
+
+                        cobra_lista = [[x, y]]
+                        comprimento = 1
+
+                        comida_x, comida_y = gerar_comida(cobra_lista)
+
+                        game_over = False
+                        break
 
                     elif evento.key == pygame.K_m:
                         return
@@ -358,48 +479,94 @@ def jogo(modo_ia=False):
         # Se estiver no modo IA, ela escolhe a direção.
         if modo_ia:
             estado = obter_estado(
-            x, y, direcao, cobra_lista, comida_x, comida_y
-        )
+                x, y, direcao, cobra_lista, comida_x, comida_y
+            )
 
-        acao = escolher_acao_aleatoria(estado)
+            acao = agente.escolher_acao(estado)
 
-        direcao = aplicar_acao(direcao, acao)
-
+            direcao = aplicar_acao(direcao, acao)
+        
         # Atualiza posição
         x, y = mover_cobra(x, y, direcao)
 
         # Colisão com parede
         if x >= LARGURA or x < 0 or y >= ALTURA or y < 0:
-            
+
             pontuacoes.append(comprimento - 1)
+
+            if modo_ia:
+                agente.aprender(
+                    estado, acao, -10, None, True
+                )
+
+                agente.encerrar_episodio()
+                registrar_resultado_ia(comprimento - 1)
 
             game_over = True
             continue
 
+        # Atualiza o corpo da cobra
+        cabeca = [x, y]
+        cobra_lista.append(cabeca)
+
+        # Verifica se a cobra comeu.
+        comeu = x == comida_x and y == comida_y
+
+        # Se não comeu, a cauda sai da posição anterior.
+        if not comeu and len(cobra_lista) > comprimento:
+            del cobra_lista[0]
+
+        # Colisão com o próprio corpo
+        if cabeca in cobra_lista[:-1]:
+
+            pontuacoes.append(comprimento - 1)
+
+            if modo_ia:
+                agente.aprender(
+                    estado, acao, -10, None, True
+                )
+
+                agente.encerrar_episodio()
+                registrar_resultado_ia(comprimento - 1)
+
+            game_over = True
+            continue
+
+        # Define a recompensa.
+        if comeu:
+
+            comprimento += 1
+
+            comida_x, comida_y = gerar_comida(cobra_lista)
+
+            recompensa = 10
+
+        else:
+            recompensa = -0.1
+
+        # A IA aprende com o resultado do movimento.
+        if modo_ia:
+
+            proximo_estado = obter_estado(
+                x, y, direcao, cobra_lista, comida_x, comida_y
+            )
+
+            agente.aprender(
+                estado,
+                acao,
+                recompensa,
+                proximo_estado,
+                False
+            )
+
+        # Desenha o cenário
         tela.fill(PRETO)
 
-        # Comida
         pygame.draw.rect(
             tela,
             VERMELHO,
             [comida_x, comida_y, TAMANHO_BLOCO, TAMANHO_BLOCO]
         )
-
-        # Cobra
-        cabeca = [x, y]
-        cobra_lista.append(cabeca)
-
-        if len(cobra_lista) > comprimento:
-            del cobra_lista[0]
-
-        # Colisão com o próprio corpo
-        for bloco in cobra_lista[:-1]:
-
-            if bloco == cabeca:
-
-                pontuacoes.append(comprimento - 1)
-
-                game_over = True
 
         desenhar_cobra(TAMANHO_BLOCO, cobra_lista)
 
@@ -407,27 +574,7 @@ def jogo(modo_ia=False):
 
         pygame.display.update()
 
-        # Comer comida
-        if x == comida_x and y == comida_y:
-
-            comida_x = round(
-                random.randrange(
-                    0,
-                    LARGURA - TAMANHO_BLOCO
-                ) / 10.0
-            ) * 10.0
-
-            comida_y = round(
-                random.randrange(
-                    0,
-                    ALTURA - TAMANHO_BLOCO
-                ) / 10.0
-            ) * 10.0
-
-            comprimento += 1
-
         clock.tick(VELOCIDADE)
-
     pygame.quit()
     quit()
 

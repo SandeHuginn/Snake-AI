@@ -2,7 +2,7 @@
 
 Projeto de evolução do clássico jogo da cobrinha, desenvolvido em Python com Pygame.
 
-A proposta é transformar o jogo tradicional em um ambiente no qual uma Inteligência Artificial possa aprender a jogar por meio de **Aprendizado por Reforço (Reinforcement Learning)**, utilizando o algoritmo **Q-Learning**.
+A proposta é transformar o jogo tradicional em um ambiente no qual uma Inteligência Artificial possa aprender a jogar por meio de **Aprendizado por Reforço (Reinforcement Learning)**, utilizando o algoritmo **Q-Learning**. O projeto também conta com um assistente virtual integrado ao jogo, capaz de responder dúvidas sobre seu funcionamento e sobre os conceitos de Inteligência Artificial utilizados.
 
 ## Origem do projeto
 
@@ -18,12 +18,16 @@ Para isso, o agente observa o estado atual do jogo, escolhe uma ação e recebe 
 
 Com a repetição desse processo, a IA atualiza seus conhecimentos e busca melhorar seu desempenho.
 
+Além disso, o projeto possui um assistente virtual que permite ao usuário consultar informações sobre o jogo, o algoritmo Q-Learning e os parâmetros utilizados no treinamento.
+
 ## Tecnologias
 
 - Python
 - Pygame (pygame-ce)
 - Aprendizado por Reforço (Reinforcement Learning)
 - Q-Learning
+- Dialogflow ES
+- Google Cloud
 
 ## Funcionamento atual
 
@@ -40,7 +44,9 @@ O projeto possui:
 - Modo de teste da Inteligência Artificial;
 - Treinamento automático da IA;
 - Treinamento acelerado;
-- Registro de estatísticas do aprendizado.
+- Registro de estatísticas do aprendizado;
+- Assistente virtual integrado ao jogo;
+- Comunicação com o Dialogflow ES para processamento das mensagens.
 
 ## Inteligência Artificial
 
@@ -110,6 +116,36 @@ O projeto possui diferentes formas de executar e observar o agente:
 
 Durante o treinamento, são registradas informações como quantidade de episódios, pontuação, média das últimas 20 partidas, estados conhecidos, atualizações da tabela Q e valor atual de Epsilon.
 
+## Assistente virtual
+
+O projeto possui um assistente virtual integrado ao jogo por meio do **Dialogflow ES**, serviço do Google Cloud utilizado para interpretar mensagens e fornecer respostas.
+
+O usuário pode acessar o assistente pelo menu principal, selecionar a opção correspondente e enviar perguntas diretamente pela interface do Pygame.
+
+A integração é realizada por meio do arquivo `chatbot.py`, responsável por:
+
+- Estabelecer a comunicação com o Dialogflow ES;
+- Enviar as mensagens do usuário;
+- Receber as respostas do agente;
+- Retornar o conteúdo da resposta para a interface do jogo.
+
+As consultas são executadas em uma thread separada, evitando que a comunicação com o serviço externo bloqueie a interface do jogo enquanto uma resposta está sendo processada.
+
+### Intenções implementadas
+
+O assistente possui intenções (*intents*) configuradas para reconhecer diferentes tipos de perguntas:
+
+| Intenção | Finalidade |
+|---|---|
+| Saudacao | Responder a cumprimentos |
+| RegrasDoJogo | Explicar as regras do Snake |
+| ExplicarQLearning | Apresentar o funcionamento do Q-Learning |
+| SistemaDeRecompensas | Explicar as recompensas e punições da IA |
+| ModosDeJogo | Informar os modos de execução disponíveis |
+| ParametrosQLearning | Explicar os parâmetros utilizados no treinamento |
+
+A integração utiliza uma chave de credenciais armazenada localmente, fora do repositório. Dessa forma, informações sensíveis não precisam ser incluídas nos arquivos versionados do projeto.
+
 ## Arquitetura do aprendizado
 
 O funcionamento do agente segue este ciclo:
@@ -166,14 +202,25 @@ Foram implementados os modos de treinamento automático e acelerado.
 
 Também foi criado um sistema de registro de estatísticas para acompanhar o desempenho do agente ao longo dos episódios.
 
+### Etapa 6 — Integração do assistente virtual
+
+Foi implementada a integração com o Dialogflow ES, permitindo que o usuário converse com um assistente virtual diretamente pela interface do jogo.
+
+Foi criado o arquivo `chatbot.py` para realizar a comunicação com o serviço e o arquivo `teste_chatbot.py` para testar as respostas independentemente da interface gráfica.
+
+Posteriormente, o assistente foi integrado ao menu principal do Pygame, com uma tela própria para envio e visualização de mensagens.
+
+Também foi implementada a execução assíncrona das consultas, permitindo que o jogo continue responsivo enquanto aguarda as respostas do Dialogflow.
+
 ## Próximos passos
 
 - Implementar um modo de avaliação sem exploração, utilizando Epsilon igual a zero;
 - Comparar o desempenho da IA antes e depois do treinamento;
 - Analisar a evolução das pontuações;
 - Avaliar possíveis melhorias na representação do estado e no sistema de recompensas;
-- Documentar os resultados dos experimentos.
+- Documentar os resultados dos experimentos;
+- Expandir as intenções e as respostas do assistente virtual.
 
 ---
 
-**Status do projeto:** implementação inicial do Q-Learning concluída. O projeto está na fase de treinamento, avaliação e aprimoramento do agente.
+**Status do projeto:** implementação inicial do Q-Learning concluída e assistente virtual integrado ao jogo. O projeto está na fase de treinamento, avaliação e aprimoramento do agente.

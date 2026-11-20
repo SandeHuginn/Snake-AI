@@ -1,5 +1,9 @@
 import pygame
 import random
+import threading
+import queue
+
+from chatbot import enviar_mensagem
 
 # Inicializa pygame
 pygame.init()
@@ -58,17 +62,144 @@ def mostrar_pontuacao(score):
     texto = fonte.render(f"Pontos: {score}", True, BRANCO)
     tela.blit(texto, [10, 10])
 
+# TELA DO ASSISTENTE VIRTUAL
+def tela_chatbot():
+
+    mensagens = [
+        ("Snake AI", "Olá! Como posso ajudar você?")
+    ]
+
+    entrada = ""
+    respostas = queue.Queue()
+    aguardando_resposta = False
+
+    while True:
+
+        tela.fill(PRETO)
+
+        escrever("ASSISTENTE VIRTUAL", VERDE, 35, 120, 20)
+
+
+        # Organiza as mensagens em linhas que cabem na janela.
+        linhas_conversa = []
+
+        fonte_mensagem = pygame.font.SysFont("arial", 16)
+
+        for autor, mensagem in mensagens:
+
+            cor = AZUL if autor == "Você" else BRANCO
+
+            linhas_conversa.append((f"{autor}:", cor))
+
+            palavras = mensagem.split()
+            linha = ""
+
+            for palavra in palavras:
+
+                teste = linha + palavra + " "
+
+                # Verifica a largura real do texto em pixels.
+                if fonte_mensagem.size(teste)[0] > 550:
+
+                    linhas_conversa.append((linha, BRANCO))
+                    linha = palavra + " "
+
+                else:
+                    linha = teste
+
+            if linha:
+                linhas_conversa.append((linha, BRANCO))
+
+        # Exibe somente as últimas 10 linhas.
+        y = 85
+
+        for texto, cor in linhas_conversa[-10:]:
+
+            texto_renderizado = fonte_mensagem.render(
+                texto, True, cor
+            )
+
+            tela.blit(texto_renderizado, (20, y))
+
+            y += 22
+
+        # Campo de entrada.
+        pygame.draw.rect(tela, AZUL, (10, 335, 580, 35), 2)
+
+        escrever("> " + entrada, BRANCO, 18, 18, 340)
+
+        escrever(
+            "ENTER - Enviar | ESC - Voltar",
+            VERDE, 16, 100, 375
+        )
+
+        if aguardando_resposta:
+            escrever("Aguardando resposta...", AZUL, 16, 20, 305)
+
+        pygame.display.update()
+
+        # Verifica se chegou alguma resposta do Dialogflow.
+        try:
+            while True:
+                resposta = respostas.get_nowait()
+                mensagens.append(("Snake AI", resposta))
+                aguardando_resposta = False
+
+        except queue.Empty:
+            pass
+
+        for evento in pygame.event.get():
+
+            if evento.type == pygame.QUIT:
+                pygame.quit()
+                quit()
+
+            if evento.type == pygame.KEYDOWN:
+
+                if evento.key == pygame.K_ESCAPE:
+                    return
+
+                elif evento.key == pygame.K_RETURN:
+
+                    if entrada.strip() and not aguardando_resposta:
+
+                        mensagem = entrada.strip()
+
+                        mensagens.append(("Você", mensagem))
+
+                        entrada = ""
+                        aguardando_resposta = True
+
+                        # Consulta o Dialogflow em outra thread.
+                        def consultar_dialogflow(texto):
+
+                            resposta = enviar_mensagem(texto)
+                            respostas.put(resposta)
+
+                        threading.Thread(
+                            target=consultar_dialogflow,
+                            args=(mensagem,),
+                            daemon=True
+                        ).start()
+
+                elif evento.key == pygame.K_BACKSPACE:
+                    entrada = entrada[:-1]
+
+                elif evento.unicode.isprintable():
+                    entrada += evento.unicode
+
 # MENU PRINCIPAL
 def menu():
     while True:
         tela.fill(PRETO)
 
         escrever("JOGO DA COBRINHA", VERDE, 45, 120, 50)
-        escrever("1 - Jogar", BRANCO, 30, 120, 150)
-        escrever("2 - Pontuações", BRANCO, 30, 120, 195)
-        escrever("3 - Testar IA", BRANCO, 30, 120, 240)
-        escrever("4 - Treinamento acelerado", BRANCO, 25, 120, 285)
-        escrever("5 - Sair", BRANCO, 30, 120, 330)
+        escrever("1 - Jogar", BRANCO, 26, 150, 125)
+        escrever("2 - Pontuações", BRANCO, 26, 150, 165)
+        escrever("3 - Testar IA", BRANCO, 26, 150, 205)
+        escrever("4 - Treinamento acelerado", BRANCO, 24, 150, 245)
+        escrever("5 - Assistente Virtual", AZUL, 24, 150, 285)
+        escrever("6 - Sair", BRANCO, 26, 150, 325)
 
         pygame.display.update()
 
@@ -93,6 +224,9 @@ def menu():
                     jogo(modo_ia=True, treinamento_rapido=True)
 
                 elif evento.key == pygame.K_5:
+                    tela_chatbot()
+
+                elif evento.key == pygame.K_6:
                     pygame.quit()
                     quit()
 
